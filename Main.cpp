@@ -2,6 +2,7 @@
 #include <Windows.h>
 #include <chrono>
 #include <thread>
+#include <string>
 
 const int WIDTH = 200;
 const int HEIGHT = 40;
@@ -87,7 +88,30 @@ public:
     void updatePaddle(Paddle* paddle);
     boolean checkBallCollision(boolean xInc, boolean yInc) const;
     void resetBall() const;
+    void clear() const;
+    void displayText(std::string string);
 };
+
+void Board::displayText(std::string string) {
+    int length = string.length();
+    //Clear screen
+    this->clear();
+
+    for (int i = 0; i < length; i++) {
+        this->display[(this->boardSize->x / 2) - ( (length/2) - i) + (this->boardSize->y / 2 * this->boardSize->x)] = string[i];
+    }
+}
+
+void Board::clear() const {
+    for (int col = 0; col < this->boardSize->x; col++) {
+        for (int row = 0; row < this->boardSize->y; row++) {
+            if (col == this->boardSize->x - 1) {
+                this->display[col + (row * this->boardSize->x)] = 0;
+            }
+            this->display[col + (row * this->boardSize->x)] = ' ';
+        }
+    }
+}
 
 void Board::resetBall() const {
     this->display[this->ball->getPos()->x + (this->ball->getPos()->y * this->boardSize->x)] = ' ';
@@ -309,10 +333,9 @@ void setWindowSize(int width, int height)
     SetConsoleWindowInfo(Handle, TRUE, &Rect);            // Set Window Size 
 } 
 
-void displayGame(Board* board, std::chrono::milliseconds *timespan, HANDLE handle){
+void displayBoard(Board* board, std::chrono::milliseconds *timespan, HANDLE handle){
     DWORD bytesWritten = 0;
     std::this_thread::sleep_for(*timespan);
-    board->update();
     WriteConsoleOutputCharacterA(handle, (LPCSTR)board->getDisplay(), board->getBoardSize()->x * board->getBoardSize()->y, { 0, 0 }, &bytesWritten);
 }
 
@@ -327,11 +350,24 @@ int main() {
 
     setWindowSize(WIDTH, HEIGHT);
 
-    int interval = 0;
+    //int interval = 0;
     //Prints the board
-    while (board->getPlayerScores()[0] < 10 && board->getPlayerScores()[1] < 10){
-        if (board->getPlayerScores()[0])
-        displayGame(board, &timespan, handle);
+    while (true){
+        if (board->getPlayerScores()[0] > 9) {
+            board->displayText("Player 2 Wins!");
+            displayBoard(board, &timespan, handle);
+            std::cin.get();
+            break;
+        }
+        else if (board->getPlayerScores()[1] > 9) {
+            board->displayText("Player 1 Wins!");
+            displayBoard(board, &timespan, handle);
+            std::cin.get();
+            break;
+        }
+        setWindowSize(WIDTH, HEIGHT);
+        board->update();
+        displayBoard(board, &timespan, handle);
     }
 
 }

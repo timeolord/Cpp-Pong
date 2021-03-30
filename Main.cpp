@@ -2,11 +2,10 @@
 #include <Windows.h>
 #include <chrono>
 #include <thread>
-#include "MainHeader.h"
 
-const int WIDTH = 120;
-const int HEIGHT = 30;
-const int PADDLELENGTH = 7;
+const int WIDTH = 200;
+const int HEIGHT = 40;
+const int PADDLELENGTH = HEIGHT/5;
 const int PADDLEOFFSET = 5;
 
 struct Pair {
@@ -293,22 +292,46 @@ void Board::updatePaddle(Paddle* paddle) {
     }
 }
 
-int main() {
-    //Initiates the console buffer
-    HANDLE console = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
-    SetConsoleActiveScreenBuffer(console);
+void setWindowSize(int width, int height) 
+{ 
+    _COORD coord; 
+    coord.X = width; 
+    coord.Y = height; 
+
+    _SMALL_RECT Rect; 
+    Rect.Top = 0; 
+    Rect.Left = 0; 
+    Rect.Bottom = height - 1; 
+    Rect.Right = width - 1; 
+
+    HANDLE Handle = GetStdHandle(STD_OUTPUT_HANDLE);      // Get Handle 
+    SetConsoleScreenBufferSize(Handle, coord);            // Set Buffer Size 
+    SetConsoleWindowInfo(Handle, TRUE, &Rect);            // Set Window Size 
+} 
+
+void displayGame(Board* board, std::chrono::milliseconds *timespan, HANDLE handle){
     DWORD bytesWritten = 0;
+    std::this_thread::sleep_for(*timespan);
+    board->update();
+    WriteConsoleOutputCharacterA(handle, (LPCSTR)board->getDisplay(), board->getBoardSize()->x * board->getBoardSize()->y, { 0, 0 }, &bytesWritten);
+}
+
+int main() {
+
+    HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);  
 
     auto* board = new Board();
+    
+    int time;
+    std::chrono::milliseconds timespan(40);
 
-    std::chrono::milliseconds timespan(50);
+    setWindowSize(WIDTH, HEIGHT);
 
+    int interval = 0;
     //Prints the board
-    while (true){
-        std::this_thread::sleep_for(timespan);
-        board->update();
-        WriteConsoleOutputCharacterA(console, (LPCSTR)board->getDisplay(), board->getBoardSize()->x * board->getBoardSize()->y, { 0, 0 }, &bytesWritten);
+    while (board->getPlayerScores()[0] < 10 && board->getPlayerScores()[1] < 10){
+        if (board->getPlayerScores()[0])
+        displayGame(board, &timespan, handle);
     }
 
-    return 0;
 }

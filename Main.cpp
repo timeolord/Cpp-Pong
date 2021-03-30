@@ -3,6 +3,7 @@
 #include <chrono>
 #include <thread>
 #include <string>
+#include "Main.h"
 
 const int WIDTH = 200;
 const int HEIGHT = 40;
@@ -42,6 +43,8 @@ public:
     Pair* getPosition() {
         return position;
     }
+    void moveUp();
+    void moveDown();
 };
 class Board {
     char* display;
@@ -82,10 +85,11 @@ public:
     }
     
     Board();
-    void print();
     void update();
     void updateBall() const;
     void updatePaddle(Paddle* paddle);
+    void clearPaddle(Paddle* paddle);
+    void displayPaddle(Paddle* paddle);
     boolean checkBallCollision(boolean xInc, boolean yInc) const;
     void resetBall() const;
     void clear() const;
@@ -145,26 +149,6 @@ Board::Board() {
     this->player2 = new Paddle(this->paddleLength, new Pair(this->paddleOffset, this->boardSize->y / 2));
 }
 
-void Board::print() {
-    for (int i = 0; i <= this->boardSize->x + 1; i++) {
-        std::cout << '=';
-    }
-    std::cout << std::endl;
-    //Print background
-    for (int row = 0; row < this->boardSize->y; row++) {
-        std::cout << '|';
-        for (int col = 0; col < this->boardSize->x; col++) {
-            std::cout << this->display[col + (row * this->boardSize->x)];
-        }
-        std::cout << '|';
-        std::cout << std::endl;
-    }
-    for (int i = 0; i <= this->boardSize->x + 1; i++) {
-        std::cout << '=';
-    }
-    std::cout << std::endl;
-}
-
 void Board::update() {
     //Resets ball
     this->display[this->ball->getPos()->x + (this->ball->getPos()->y * this->boardSize->x)] = ' ';
@@ -191,6 +175,7 @@ void Board::updateBall() const {
         else if (ball->getPos()->x >= boardSize->x - 1) {
             this->resetBall();
             this->getPlayerScores()[0] += 1;
+            ball->getVelocity()->y = 225;
             this->updateBall();
         }
         else if (this->checkBallCollision(true, false)) {
@@ -211,6 +196,7 @@ void Board::updateBall() const {
         else if (ball->getPos()->x >= boardSize->x - 1) {
             this->resetBall();
             this->getPlayerScores()[0] += 1;
+            ball->getVelocity()->y = 135;
             this->updateBall();
         }
         else if (this->checkBallCollision(true, true)) {
@@ -231,6 +217,7 @@ void Board::updateBall() const {
         else if (ball->getPos()->x <= 0) {
             this->resetBall();
             this->getPlayerScores()[1] += 1;
+            ball->getVelocity()->y = 315;
             this->updateBall();
         }
         else if (this->checkBallCollision(false, false)) {
@@ -251,6 +238,7 @@ void Board::updateBall() const {
         else if (ball->getPos()->x <= 0) {
             this->resetBall();
             this->getPlayerScores()[1] += 1;
+            ball->getVelocity()->y = 45;
             this->updateBall();
         }
         else if (this->checkBallCollision(false, true)) {
@@ -279,38 +267,63 @@ boolean Board::checkBallCollision(boolean xInc, boolean yInc) const {
     }
 }
 
+void Paddle::moveUp()
+{
+    this->getPosition()->y -= 1;
+}
+
+void Paddle::moveDown()
+{
+    this->getPosition()->y += 1;
+}
+
+int isKeyPressed(int key)
+{
+    return GetKeyState(key) & 0x8000;
+}
+
 void Board::updatePaddle(Paddle* paddle) {
-    for (int i = paddle->getPosition()->y - paddle->getLength() / 2; i < paddle->getPosition()->y + paddle->getLength() / 2; i++) {
-        this->display[paddle->getPosition()->x + (i * this->boardSize->x)] = ' ';
-    }
+    clearPaddle(paddle);
     if (paddle == this->player1) {
-        if (GetKeyState(VK_UP) & 0x8000/*Check if high-order bit is set (1 << 15)*/)
+        if (isKeyPressed(VK_UP))
         {
             if (paddle->getPosition()->y - paddle->getLength() / 2 >= 1) {
-                paddle->getPosition()->y -= 1;
+                paddle->moveUp();
             }
         }
-        if (GetKeyState(VK_DOWN) & 0x8000/*Check if high-order bit is set (1 << 15)*/)
+        if (isKeyPressed(VK_DOWN))
         {
             if (paddle->getPosition()->y + paddle->getLength() / 2 <= this->getBoardSize()->y - 1) {
-                paddle->getPosition()->y += 1;
+                paddle->moveDown();
             }
         }
     }
     else if (paddle == this->player2) {
-        if (GetKeyState('W') & 0x8000/*Check if high-order bit is set (1 << 15)*/)
+        if (isKeyPressed('W'))
         {
             if (paddle->getPosition()->y - paddle->getLength() / 2 >= 1) {
-                paddle->getPosition()->y -= 1;
+                paddle->moveUp();
             }
         }
-        if (GetKeyState('S') & 0x8000/*Check if high-order bit is set (1 << 15)*/)
+        if (isKeyPressed('S'))
         {
             if (paddle->getPosition()->y + paddle->getLength() / 2 <= this->getBoardSize()->y - 1) {
-                paddle->getPosition()->y += 1;
+                paddle->moveDown();
             }
         }
     }
+    displayPaddle(paddle);
+}
+
+void Board::clearPaddle(Paddle* paddle)
+{
+    for (int i = paddle->getPosition()->y - paddle->getLength() / 2; i < paddle->getPosition()->y + paddle->getLength() / 2; i++) {
+        this->display[paddle->getPosition()->x + (i * this->boardSize->x)] = ' ';
+    }
+}
+
+void Board::displayPaddle(Paddle* paddle)
+{
     for (int i = paddle->getPosition()->y - paddle->getLength() / 2; i < paddle->getPosition()->y + paddle->getLength() / 2; i++) {
         this->display[paddle->getPosition()->x + (i * this->boardSize->x)] = '|';
     }
@@ -344,29 +357,40 @@ int main() {
     HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);  
 
     auto* board = new Board();
-    
-    int time;
-    std::chrono::milliseconds timespan(40);
+    int time = 40;
+    std::chrono::milliseconds timespan(time);
 
     setWindowSize(WIDTH, HEIGHT);
 
-    //int interval = 0;
     //Prints the board
     while (true){
         if (board->getPlayerScores()[0] > 9) {
-            board->displayText("Player 2 Wins!");
-            displayBoard(board, &timespan, handle);
-            std::cin.get();
-            break;
-        }
-        else if (board->getPlayerScores()[1] > 9) {
             board->displayText("Player 1 Wins!");
             displayBoard(board, &timespan, handle);
             std::cin.get();
             break;
         }
+        else if (board->getPlayerScores()[1] > 9) {
+            board->displayText("Player 2 Wins!");
+            displayBoard(board, &timespan, handle);
+            std::cin.get();
+            break;
+        }
+        //Gets the score before update
+        int player2Score = board->getPlayerScores()[0];
+        int player1Score = board->getPlayerScores()[1];
+
         setWindowSize(WIDTH, HEIGHT);
         board->update();
+
+        //If score changes increases the speed of the game
+        if (board->getPlayerScores()[0] != player2Score || board->getPlayerScores()[1] != player1Score) {
+            int delta = time * 0.15;
+            time -= delta;
+            std::chrono::milliseconds deltaTime(time);
+            timespan = deltaTime;
+        }
+
         displayBoard(board, &timespan, handle);
     }
 
